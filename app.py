@@ -58,7 +58,7 @@ def convert_embeddings_to_faiss_index(embeddings, context_ids):
 
 
 
-def vector_search(query, model, index, num_results=100):
+def vector_search(query, model, index, num_results=20):
     """Tranforms query to vector using a pretrained, sentence-level
     model and finds similar vectors using FAISS.
     """
@@ -158,11 +158,11 @@ def load_models():
 
     semantic_search_model = load_semantic_search_model("distiluse-base-multilingual-cased-v1")
 
-    model_nli_stsb = CrossEncoder('ssilwal/nli-stsb-fr', max_length=512, device='cuda')
+    model_nli_stsb = CrossEncoder('ssilwal/nli-stsb-fr', max_length=512, device='cpu')
 
-    model_nli = CrossEncoder('ssilwal/CASS-civile-nli', max_length=512, device='cuda')
+    model_nli = CrossEncoder('ssilwal/CASS-civile-nli', max_length=512, device='cpu')
 
-    model_baseline = CrossEncoder('amberoad/bert-multilingual-passage-reranking-msmarco', max_length=512, device='cuda')
+    model_baseline = CrossEncoder('amberoad/bert-multilingual-passage-reranking-msmarco', max_length=512, device='cpu')
 
     df = pd.read_csv('synthetic-dataset.csv')
     contexts = df.premise.unique()
