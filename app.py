@@ -158,11 +158,11 @@ def load_models():
 
     semantic_search_model = load_semantic_search_model("distiluse-base-multilingual-cased-v1")
 
-    model_nli_stsb = CrossEncoder('ssilwal/nli-stsb-fr', max_length=512, device='cpu')
+    model_nli_stsb = CrossEncoder('ssilwal/nli-stsb-fr', max_length=512, device='cuda')
 
-    model_nli = CrossEncoder('ssilwal/CASS-civile-nli', max_length=512, device='cpu')
+    model_nli = CrossEncoder('ssilwal/CASS-civile-nli', max_length=512, device='cuda')
 
-    model_baseline = CrossEncoder('amberoad/bert-multilingual-passage-reranking-msmarco', max_length=512, device='cpu')
+    model_baseline = CrossEncoder('amberoad/bert-multilingual-passage-reranking-msmarco', max_length=512, device='cuda')
 
     df = pd.read_csv('synthetic-dataset.csv')
     contexts = df.premise.unique()
@@ -181,7 +181,7 @@ if 'slider' not in st.session_state:
     st.session_state['slider'] = 0
 
 if 'radio' not in st.session_state:
-    st.session_state['radio'] = 'Model 1'
+    st.session_state['radio'] = 'Civile-Law-IR'
 
 if 'show' not in st.session_state:
     st.session_state['show'] = False
@@ -217,18 +217,18 @@ def run_inference(model_name, query):
 
     # Compute the similarity scores for these combinations
 
-    if model_name=='Model 1':
+    if model_name=='Civile-Law-IR':
         similarity_scores = model_nli.predict(sentence_combinations)
         scores = [(score_max[0],idx) for idx,score_max in enumerate(similarity_scores)]
         sim_scores_argsort = sorted(scores, key=lambda x: x[0], reverse=True)
         results = [pred[idx] for _,idx in list(sim_scores_argsort)[:int(top_K)]]
 
-    if model_name=='Model 2':
+    if model_name=='STSB':
         similarity_scores = model_nli_stsb.predict(sentence_combinations)
         sim_scores_argsort = reversed(np.argsort(similarity_scores))
         results = [pred[idx] for idx in list(sim_scores_argsort)[:int(top_K)]]
     
-    if model_name=='Model 3':
+    if model_name=='DR-Baseline':
         similarity_scores = model_baseline.predict(sentence_combinations)
         scores = [(score_max[0],idx) for idx,score_max in enumerate(similarity_scores)]
         sim_scores_argsort = sorted(scores, key=lambda x: x[0], reverse=True)
@@ -254,8 +254,8 @@ top_K = st.text_input('Choose Number of Result: ','10')
 
 model_name = st.radio(
         "Choose Model",
-        ("Model 1", "Model 2", "Model 3"),
-         key='radio', on_change=callback, args=('radio','Model 1')
+        ("Civile-Law-IR", "STSB", "DR-Baseline"),
+         key='radio', on_change=callback, args=('radio','CivileLaw-IR'), help="Civile-Law-IR: trained on civile-NLI-dataset, STSB: trained on STSB french dataset, DR-Baseline: existing nli model trained on ms marco dataset"
     )
 
 
@@ -266,7 +266,7 @@ if st.button('Run', key='run'):
     st.session_state['show'] = True
     st.session_state['results'] = results
     st.session_state['query'] = query
-    model_dict = {'Model 1': 'NLI-Syn', 'Model 2': 'NLI-stsb', 'Model 3': 'NLI-baseline'}
+    model_dict = {'Civile-Law-IR': 'NLI-Syn', 'STSB': 'NLI-stsb', 'DR-Baseline': 'NLI-baseline'}
     st.session_state['model'] = model_dict[model_name]
 
 
@@ -279,29 +279,3 @@ if st.session_state['show'] and st.session_state['results']!=None:
         line = f'Context: {result}\n\n'
 
         st.write(line)
-
-rate = st.slider('Please rate this output', min_value= 0, max_value=5, key='slider', on_change=callback, args=('slider','0'))
-
-if st.session_state['slider'] !=0:
-    rate = st.session_state['slider']
-    st.write(f'You rated {rate}')
-
-    
-
-if st.button('Submit', key='rate'):
-    if st.session_state['results']!=None:
-        item = {'query': st.session_state['query'], 'results': st.session_state['results'], 'model': st.session_state['model'],'rating': st.session_state['slider']}
-        try:
-            with open('human.json','r') as file:
-                import json
-                archive = json.load(file)
-                archive.append(item)
-            with open('human.json','w') as file:
-                json.dump(archive, file)
-        except FileNotFoundError:
-            import json
-            data = [item]
-            print(data)
-            with open('human.json','w') as file:
-                json.dump(data, file)
-
